@@ -1,6 +1,8 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 #include "Paginator.h"
+//#include <iostream>
+#include <random>
 
 // APPLICATION STARTS HERE
 
@@ -42,6 +44,7 @@ private:
 	{
 		std::vector<Term> vecTerm;
 		std::string SideOfEquationStr;
+		std::string Name;
 	};
 
 	// Right so we want an aggregate function that operates on SideOfEquation 
@@ -54,6 +57,8 @@ private:
 		SideOfEquation LHS;
 		SideOfEquation RHS;
 	};
+
+
 
 	struct Logarithm
 	{
@@ -95,7 +100,7 @@ private:
 
 	std::string ScreenOutputFlag1 = "Not there yet";
 	std::string ScreenOutputFlag2 = "Not there yet";
-	std::string ScreenOutputFlag3 = "Not there yet";
+	std::string ScreenOutputFlag3 = "Cap'n";
 	std::string ScreenOutputFlag4 = "Not there yet";
 	std::string ScreenOutputFlag5 = "Not there yet";
 	std::string ScreenOutputFlag6 = "Not there yet";
@@ -108,6 +113,9 @@ private:
 	int numLines = 1;
 	bool DoingLogarithms = false;
 	bool DroppingTerms = false;
+	bool MultiplicationDivision = false;
+	std::string OperationsMaster = "abcdefghijklmnopqrstuvwyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	std::vector<std::string> vecChosenVariables;
 
 	Equation bbEquation;
 	Equation bbEquationSolution;
@@ -115,7 +123,11 @@ private:
 	Logarithm TriangleLogarithm;
 	int bbAsteroidLevel = 1;
 	int bbEquationLevel = 1;
+	int LoadedEquationLevels = 6;
 	int bbLogarithmLevel = 1;
+	int MaxTerms = 3;
+	int MaxComplexity = 100;
+	int Complexity = 0;
 	std::vector<std::string> vecAppropriateVariables;
 	std::vector<std::string> vecAppropriateVariablesCycle;
 	std::vector<Logarithm> vecAppropriateLogarithms; //This probably wants to be called something else
@@ -142,6 +154,7 @@ private:
 	std::vector<sSpaceObject> vecSpaceAnchors;
 	std::vector<sSpaceObject> vecTicks;
 	std::vector<sSpaceObject> vecBombs;
+	std::vector<sSpaceObject> vecBouncingMessages;
 
 	sSpaceObject player;
 	int nScore = 0;
@@ -155,6 +168,7 @@ private:
 	float Pi = 3.14159265359;
 	std::string PresentOperation = "";
 	std::string PresentOperationVariable = "";
+	std::string RequiredOpStr;
 	float fAccruedTime;
 
 	std::vector<std::pair<float, float>> vecModelShip;
@@ -180,9 +194,16 @@ public:
 	bool OnUserCreate() override
 	{
 		//sprDemo = new olc::Sprite("APicture.png");
+		//ChooseVariables(5);
 
 		vecAsteroids.push_back({ 20.0f, 20.0f, 8.0f, -6.0f, (int)16, 0.0f });
 
+		// Initialise Equations
+		bbEquation.LHS.Name = "LHS";
+		bbEquation.RHS.Name = "RHS";
+		bbEquationSolution.LHS.Name = "LHS";
+		bbEquationSolution.RHS.Name = "RHS";
+			
 		//Initialise Player Position
 		player.x = ScreenWidth() / 2.0f;
 		player.y = ScreenHeight() / 2.0f;
@@ -348,7 +369,7 @@ public:
 		}
 	}
 
-	void LoadEquationLevel(int CurrentEquationLevel)
+	void LoadEquationLevel(int CurrentEquationLevel, bool Reload)
 	{
 
 		//Initialise
@@ -377,30 +398,611 @@ public:
 
 		switch (CurrentEquationLevel)
 		{
+
 		case 1:
-			DroppingTerms = true;
-			// a + b = c x. 
-			sLevelInstruction = "Find x";
-			sCongratulations = "x Found!";
-			//sLevelInstruction = "Find m";
-			//sCongratulations = "m Found!";
-			//
-			////bbEquation
-			//
-			Term1.vecVariable.push_back({ "a", 1 });
+			MaxTerms = 6;
+			if (!Reload)
+			{
+				ChooseVariables(3);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[1];
+			sCongratulations = vecChosenVariables[1] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
 			Term1.Coefficient = 1;
 			bbEquation.LHS.vecTerm.push_back(Term1);
-			//Term2.vecVariable.push_back({ "b", 1 });
-			Term2.vecVariable.push_back({ "b", 1 });
-			Term2.Coefficient = 1;
-			bbEquation.LHS.vecTerm.push_back(Term2);
 			Term1.vecVariable.clear();
-			Term2.vecVariable.clear();
-			Term1.vecVariable.push_back({ "c", 1 });
-			Term1.vecVariable.push_back({ "x", 1 });
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
 			Term1.Coefficient = 1;
 			bbEquation.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Operations
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[2]);
+
+			break;
+		case 2:
+			MaxTerms = 6;
+			if (!Reload)
+			{
+				ChooseVariables(4);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[2];
+			sCongratulations = vecChosenVariables[2] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1});
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Operations
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[0]);
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[0]);
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[2]);
+
+			break;
+		case 3:
+			MaxTerms = 4;
+			if (!Reload)
+			{
+				ChooseVariables(3);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[1];
+			sCongratulations = vecChosenVariables[1] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate operationschoseb
+			vecAppropriateVariables.push_back("x" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("%" + vecChosenVariables[2]);
+
+			break;
+
+		case 4:
+			MaxTerms = 4;
+			if (!Reload)
+			{
+				ChooseVariables(3);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[1];
+			sCongratulations = vecChosenVariables[1] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Operations
+			vecAppropriateVariables.push_back("x" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("%" + vecChosenVariables[2]);
+
+			break;
+
+		case 5:
+			MaxTerms = 6;
+			if (!Reload)
+			{
+				ChooseVariables(4);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[1];
+			sCongratulations = vecChosenVariables[1] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Operations
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[3]);
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[3]);
+			vecAppropriateVariables.push_back("x" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("%" + vecChosenVariables[2]);
+
+			break;
+		case 6:
+			MaxTerms = 6;
+			if (!Reload)
+				ChooseVariables(5);
+
+			sLevelInstruction = "Find " + vecChosenVariables[0];
+			sCongratulations = vecChosenVariables[0] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[4], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[1], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[1], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[4], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[1], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Operations
+			vecAppropriateVariables.push_back("%" + vecChosenVariables[1]);
+			vecAppropriateVariables.push_back("x" + vecChosenVariables[1]);
+
+			break;
+
+		/*
+		// Pagination Test
+		case 1:
+			MaxTerms = 6;
+			// We won't be reloading
+			ChooseVariables(5);
+			// We won't actually be playing the game so we won't drop terms, we will switch with 'I' key
+			// Though we pebably want some operations or I imagine we will chrash
+			MultiplicationDivision = true;
+
+
+			sLevelInstruction = "Testing Pagination";
+			sCongratulations = "This should be redundant Cap'n";
+
+			//bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			//Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			//Term1.Coefficient = 1;
+			//bbEquation.LHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[4], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			//Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			//Term1.Coefficient = 1;
+			//bbEquation.RHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
+
+			//bbEquationSolution - this will not be reached so it will be common to all pagination tests
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//Appropriate Operations
+			vecAppropriateVariables.push_back("x" + vecChosenVariables[3]);
+			vecAppropriateVariables.push_back("%" + vecChosenVariables[3]);
+			break;
+
+		case 2:
+			MaxTerms = 5;
+			// We won't be reloading
+			ChooseVariables(4);
+			// We won't actually be playing the game so we won't drop terms, we will switch with 'I' key
+			// Though we pebably want some operations or I imagine we will chrash
+			MultiplicationDivision = true;
+			DroppingTerms = true;
+
+
+			sLevelInstruction = "Find ";
+			sCongratulations = "Victory";
+
+			//bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0] , 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1] , 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2] , 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3] , 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//bbEquationSolution - this will not be reached so it will be common to all pagination tests
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//Appropriate Variables
+			vecAppropriateVariables.push_back(vecChosenVariables[2]);
+			vecAppropriateVariables.push_back(vecChosenVariables[3]);
+			break;
+		case 3:
+			MaxTerms = 5;
+			// We won't be reloading
+			ChooseVariables(5);
+			// We won't actually be playing the game so we won't drop terms, we will switch with 'I' key
+			// Though we pebably want some operations or I imagine we will chrash
+			MultiplicationDivision = true;
+
+
+			sLevelInstruction = "Testing Pagination";
+			sCongratulations = "This should be redundant Cap'n";
+
+			//bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[4], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//bbEquationSolution - this will not be reached so it will be common to all pagination tests
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//Appropriate Variables
+			vecAppropriateVariables.push_back(vecChosenVariables[2]);
+			break;
+		case 4:
+			MaxTerms = 7;
+			// We won't be reloading
+			ChooseVariables(6);
+			// We won't actually be playing the game so we won't drop terms, we will switch with 'I' key
+			// Though we pebably want some operations or I imagine we will chrash
+			MultiplicationDivision = true;
+
+
+			sLevelInstruction = "Testing Pagination";
+			sCongratulations = "This should be redundant Cap'n";
+
+			//bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[5], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[4], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[5], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//bbEquationSolution - this will not be reached so it will be common to all pagination tests
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//Appropriate Variables
+			vecAppropriateVariables.push_back(vecChosenVariables[2]);
+			break;
+		case 5:
+			MaxTerms = 5;
+			// We won't be reloading
+			ChooseVariables(4);
+			// We won't actually be playing the game so we won't drop terms, we will switch with 'I' key
+			// Though we pebably want some operations or I imagine we will chrash
+			MultiplicationDivision = true;
+
+
+			sLevelInstruction = "Testing Pagination";
+			sCongratulations = "This should be redundant Cap'n";
+
+			//bbEquation
+
+			//bbEquationSolution - this will not be reached so it will be common to all pagination tests
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//Appropriate Variables
+			vecAppropriateVariables.push_back(vecChosenVariables[2]);
+			break;
+		case 6:
+			MaxTerms = 5;
+			// We won't be reloading
+			ChooseVariables(4);
+			// We won't actually be playing the game so we won't drop terms, we will switch with 'I' key
+			// Though we pebably want some operations or I imagine we will chrash
+			MultiplicationDivision = true;
+
+
+			sLevelInstruction = "Testing Pagination";
+			sCongratulations = "This should be redundant Cap'n";
+
+			//bbEquation
+
+			//bbEquationSolution - this will not be reached so it will be common to all pagination tests
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//Appropriate Variables
+			vecAppropriateVariables.push_back(vecChosenVariables[2]);
+			break;
+		*/
+		/*
+		case 1:
+			MaxTerms = 4;
+			if (!Reload)
+			{
+				ChooseVariables(3);
+			}
+			DroppingTerms = true;
+			MultiplicationDivision = false;
+
+			sLevelInstruction = "Find " + vecChosenVariables[0];
+			sCongratulations = vecChosenVariables[0] + " Found!";
+			//
+			////bbEquation
+			//
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//
+			// bbEquationSolution
+			//
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[0] ,1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+
+			//Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			//Term1.Coefficient = 1;
+			//bbEquation.LHS.vecTerm.push_back(Term1);
+			////Term2.vecVariable.push_back({ "b", 1 });
+			//Term2.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			//Term2.Coefficient = 1;
+			//bbEquation.LHS.vecTerm.push_back(Term2);
+			//Term1.vecVariable.clear();
+			//Term2.vecVariable.clear();
+			//Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			//Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			//Term1.Coefficient = 1;
+			//bbEquation.RHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
 
 			//
 			////bbEquationSolution
@@ -416,31 +1018,31 @@ public:
 			Term1.vecVariable.push_back({ "x", 1 });
 			bbEquationSolution.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();*/
-
-			Term1.vecVariable.push_back({ "a",1 });
-			Term1.vecVariable.push_back({ "c", -1 });
-			Term1.Coefficient = 1;
-			bbEquationSolution.LHS.vecTerm.push_back(Term1);
-			Term1.vecVariable.clear();
-			Term1.vecVariable.push_back({ "b",1 });
-			Term1.vecVariable.push_back({ "c", -1 });
-			Term1.Coefficient = 1;
-			bbEquationSolution.LHS.vecTerm.push_back(Term1);
-			Term1.vecVariable.clear();
-			Term1.vecVariable.push_back({ "x", 1 });
-			Term1.Coefficient = 1;
-			bbEquationSolution.RHS.vecTerm.push_back(Term1);
-
+			/*
+						Term1.vecVariable.push_back({ vecChosenVariables[1],1 });
+						Term1.vecVariable.push_back({ vecChosenVariables[3], -1 });
+						Term1.Coefficient = 1;
+						bbEquationSolution.LHS.vecTerm.push_back(Term1);
+						Term1.vecVariable.clear();
+						Term1.vecVariable.push_back({ vecChosenVariables[2],1 });
+						Term1.vecVariable.push_back({ vecChosenVariables[3], -1 });
+						Term1.Coefficient = 1;
+						bbEquationSolution.LHS.vecTerm.push_back(Term1);
+						Term1.vecVariable.clear();
+						Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+						Term1.Coefficient = 1;
+						bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			
 
 			//
 			////AppropriateVariables
 			//
 
-			vecAppropriateVariables.push_back("c");
+			vecAppropriateVariables.push_back(vecChosenVariables[2]);
 
 			//
 			// Correct order of operations
-			//
+			// Humm, not so sure about this...
 
 			vecCorrectOrderOfOperations.push_back("%c");
 
@@ -468,64 +1070,171 @@ public:
 
 			break;
 		case 2:
+			MaxTerms = 5;
+			if (!Reload)
+			{
+				ChooseVariables(4);
+			}
 			DroppingTerms = true;
-			sLevelInstruction = "Find F";
-			sCongratulations = "F Found!";
-			Term1.vecVariable.push_back({ "P", 1 });
+			MultiplicationDivision = false;
+
+			sLevelInstruction = "Find " + vecChosenVariables[0];
+			sCongratulations = vecChosenVariables[0] + " Found!";
+
+			//
+			// bbEquation
+			//
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
 			Term1.Coefficient = 1;
 			bbEquation.LHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			Term1.vecVariable.push_back({ "F", 1 });
-			Term1.vecVariable.push_back({ "A", -1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
 			Term1.Coefficient = 1;
 			bbEquation.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			//bbEquationSolution
-			Term1.vecVariable.push_back({ "P", 1 });
-			Term1.vecVariable.push_back({ "A", 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//
+			// bbEquationSolution
+			//
+
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
 			Term1.Coefficient = 1;
 			bbEquationSolution.LHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			Term1.vecVariable.push_back({ "F", 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
 			Term1.Coefficient = 1;
 			bbEquationSolution.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			//AppropriateVariables
-			vecAppropriateVariables.push_back({ "P"});
-			//vecAppropriateVariables.push_back({ "F"});
-			vecAppropriateVariables.push_back({ "A",});
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			//
+			// Appropriate Variables
+			//
+
+			vecAppropriateVariables.push_back(vecChosenVariables[1]);
+			vecAppropriateVariables.push_back(vecChosenVariables[0]);
+
+			//Term1.vecVariable.push_back({ "P", 1 });
+			//Term1.Coefficient = 1;
+			//bbEquation.LHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
+			//Term1.vecVariable.push_back({ "F", 1 });
+			//Term1.vecVariable.push_back({ "A", -1 });
+			//Term1.Coefficient = 1;
+			//bbEquation.RHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
+			////bbEquationSolution
+			//Term1.vecVariable.push_back({ "P", 1 });
+			//Term1.vecVariable.push_back({ "A", 1 });
+			//Term1.Coefficient = 1;
+			//bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
+			//Term1.vecVariable.push_back({ "F", 1 });
+			//Term1.Coefficient = 1;
+			//bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			//Term1.vecVariable.clear();
+			////AppropriateVariables
+			//vecAppropriateVariables.push_back({ "P"});
+			////vecAppropriateVariables.push_back({ "F"});
+			//vecAppropriateVariables.push_back({ "A",});
 			break;
 		case 3:
+			MaxTerms = 2; // Redundant as we are not dropping terms
+			if (!Reload)
+			{
+				ChooseVariables(3);
+			}
 			DroppingTerms = false;
-			sLevelInstruction = "Find d";
-			sCongratulations = "d Found!";
-			Term1.vecVariable.push_back({ "s", 1 });
+			MultiplicationDivision = true;
+			sLevelInstruction = "Find " + vecChosenVariables[0];
+			sCongratulations = vecChosenVariables[0] + " Found!";
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
 			Term1.Coefficient = 1;
 			bbEquation.LHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			Term1.vecVariable.push_back({ "d", 1 });
-			Term1.vecVariable.push_back({ "t", -1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
 			Term1.Coefficient = 1;
 			bbEquation.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
 			//bbEquationSolution
-			Term1.vecVariable.push_back({ "s", 1 });
-			Term1.vecVariable.push_back({ "t", 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
 			Term1.Coefficient = 1;
 			bbEquationSolution.LHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			Term1.vecVariable.push_back({ "d", 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			//AppropriateVariables
+			vecAppropriateVariables.push_back({ vecChosenVariables[2] });
+			//vecAppropriateVariables.push_back({ "t"});
+			//vecAppropriateVariables.push_back({ "d"});
+			break;
+		case 4:
+			MaxTerms = 4;
+			if (!Reload)
+			{
+				ChooseVariables(4);
+			}
+			DroppingTerms = true;
+			MultiplicationDivision = true;
+			sLevelInstruction = "Find " + vecChosenVariables[0];
+			sCongratulations = vecChosenVariables[0] + " Found!";
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1});
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.vecVariable.push_back({ vecChosenVariables[2], -1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
 			Term1.Coefficient = 1;
 			bbEquationSolution.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
-			//AppropriateVariables
-			vecAppropriateVariables.push_back({ "s"});
-			vecAppropriateVariables.push_back({ "t"});
-			vecAppropriateVariables.push_back({ "d"});
+			// Appropriate variables
+			vecAppropriateVariables.push_back({ vecChosenVariables[2] });
+			vecAppropriateVariables.push_back({ vecChosenVariables[3] });
 			break;
+		*/
 		default:
 			bbEquationLevel = 1;
 			DroppingTerms = false;
+			MultiplicationDivision = true;
 			sLevelInstruction = "Find m";
 			sCongratulations = "m Found!";
 			//We need a suitable way to end the game
@@ -549,15 +1258,51 @@ public:
 			bbEquationSolution.RHS.vecTerm.push_back(Term1);
 			Term1.vecVariable.clear();
 			//AppropriateVariables
-			vecAppropriateVariables.push_back({ "D"});
-			vecAppropriateVariables.push_back({ "m"});
-			vecAppropriateVariables.push_back({ "V"});
+			//vecAppropriateVariables.push_back({ "D"});
+			//vecAppropriateVariables.push_back({ "m"});
+			vecAppropriateVariables.push_back( "xV");
+			vecAppropriateVariables.push_back( "%V"); 
+		}
+	}
+
+	void ChooseVariables(int numVariables)
+	{
+		// So we are selecting a requested number of substrings from a string and we don't want duplicates
+		// Choose a variable, check it is not in vecChosenVariables if it is not add it
+		int numChosen = 0;
+		int lenOperationMaster = 0;
+		int bbIndex;
+		std::string OperationsWorking = OperationsMaster;
+		vecChosenVariables.clear();
+
+		for (char a : OperationsMaster)
+		{
+			lenOperationMaster++;
+		}
+
+
+		std::random_device rd; // obtain a random number from hardware
+		std::mt19937 gen(rd()); // seed the generator
+
+		while (numChosen < numVariables)
+		{
+			std::uniform_int_distribution<> distr(0, lenOperationMaster - (numChosen +1)); // define the range
+			bbIndex = distr(gen);
+			std::cout << bbIndex << ' '; // generate number
+			std::cout << OperationsWorking.substr(bbIndex, 1) << ' ';
+			vecChosenVariables.push_back(OperationsWorking.substr(bbIndex, 1));
+			OperationsWorking.erase(bbIndex, 1);
+			numChosen++;
 		}
 	}
 
 	void PopulatevecAppropriateVariablesCycle()
 	{
-		for (auto AppropriateVariable : vecAppropriateVariables)
+		for (std::string bbOperation : vecAppropriateVariables)
+		{
+			vecAppropriateVariablesCycle.push_back(bbOperation);
+		}
+		/*for (auto AppropriateVariable : vecAppropriateVariables)
 		{
 			if (DroppingTerms == true)
 			{
@@ -570,7 +1315,7 @@ public:
 				std::string OpDivide = "%" + AppropriateVariable;
 				vecAppropriateVariablesCycle.push_back(OpDivide);
 			}
-			else
+			if (MultiplicationDivision == true)
 			{
 				std::string OpMultiply = "x" + AppropriateVariable;
 				vecAppropriateVariablesCycle.push_back(OpMultiply);
@@ -578,6 +1323,7 @@ public:
 				vecAppropriateVariablesCycle.push_back(OpDivide);
 			}
 		}
+		*/
 	}
 
 	void LoadLogarithmLevel(int CurrentEquationLevel)
@@ -715,30 +1461,36 @@ public:
 
 		if (!DoingLogarithms)
 		{
-			if (vecAppropriateVariablesCycle.empty())
+			if (!InReverse)
 			{
-				PopulatevecAppropriateVariablesCycle();
-			}
-
-			// Generate a random number for each appropriate operation
-			int bbCounter = 0;
-			int bbPlaceHolder;
-			for (std::string bbVar : vecAppropriateVariablesCycle)
-			{
-				bbRnd = (float)rand() / (float)RAND_MAX;
-				if (bbRnd > MaxRnd)
+				if (vecAppropriateVariablesCycle.empty())
 				{
-					MaxRnd = bbRnd;
-					OpStr = bbVar;
-					bbPlaceHolder = bbCounter;
+					PopulatevecAppropriateVariablesCycle();
 				}
-				bbCounter++;
-			} 
 
-			vecAppropriateVariablesCycle.erase(vecAppropriateVariablesCycle.begin() + bbPlaceHolder);
+				// Generate a random number for each appropriate operation
+				int bbCounter = 0;
+				int bbPlaceHolder;
+				for (std::string bbVar : vecAppropriateVariablesCycle)
+				{
+					bbRnd = (float)rand() / (float)RAND_MAX;
+					if (bbRnd > MaxRnd)
+					{
+						MaxRnd = bbRnd;
+						OpStr = bbVar;
+						bbPlaceHolder = bbCounter;
+					}
+					bbCounter++;
+				}
 
-			return OpStr;
+				vecAppropriateVariablesCycle.erase(vecAppropriateVariablesCycle.begin() + bbPlaceHolder);
 
+				return OpStr;
+			}
+			else 
+			{
+				return RequiredOpStr;
+			}
 			// Chose variable with highest random number - then choose multiply or divide
 			//bbRnd = (float)rand() / (float)RAND_MAX;
 			//if (bbRnd < 0.5)
@@ -917,6 +1669,8 @@ public:
 			VariableFound = false;
 			bbCounter = 0;
 		}
+		GroupByDenominator(bbEquation.LHS);
+		GroupByDenominator(bbEquation.RHS);
 	}
 
 	void OperationDivision(std::string varStr)
@@ -977,6 +1731,8 @@ public:
 			VariableFound = false;
 			bbCounter = 0;
 		}
+		GroupByDenominator(bbEquation.LHS);
+		GroupByDenominator(bbEquation.RHS);
 	}
 	
 	void AggregateTerms(SideOfEquation& Expression)
@@ -1001,6 +1757,8 @@ public:
 					{
 						Coefficient += Term2.Coefficient;
 						Term2.Aggregated = true;
+						// This works because we only set the aggregate flag on the copy and leave
+						// the original that gets passed on untouched.
 					}
 				}
 			}
@@ -1014,6 +1772,64 @@ public:
 		for (Term bbTerm : Aggregated.vecTerm)
 		{
 			Expression.vecTerm.push_back(bbTerm);
+		}
+	}
+
+	void PrepareDenominator(Term& Term)
+	{
+		Term.vecDenominator.clear();
+		for (Variable Var : Term.vecVariable)
+		{
+			if (Var.Power < 0)
+			{
+				Term.vecDenominator.push_back(Var);
+			}
+		}
+	}
+
+	void PrepareNumerator(Term& Term)
+	{
+		Term.vecNumerator.clear();
+		for (Variable Var : Term.vecVariable)
+		{
+			if (Var.Power > 0)
+			{
+				Term.vecNumerator.push_back(Var);
+			}
+		}
+	}
+
+
+	void GroupByDenominator(SideOfEquation& Expression)
+	{
+		SideOfEquation ExpressionCopy;
+		SideOfEquation GroupedByDenominator;
+
+		for (Term& Term1 : Expression.vecTerm)
+		{
+			PrepareDenominator(Term1);
+			ExpressionCopy.vecTerm.push_back(Term1);
+		}
+
+		for (Term& Term1 : Expression.vecTerm)
+		{
+			for (Term& Term2 : ExpressionCopy.vecTerm)
+			{
+				if (Term2.Aggregated == false)
+				{
+					if (DenominatorsEquivalent(Term1, Term2))
+					{
+						GroupedByDenominator.vecTerm.push_back(Term2);
+						Term2.Aggregated = true;
+					}
+				}
+			}
+		}
+		
+		Expression.vecTerm.clear();
+		for (Term Term1 : GroupedByDenominator.vecTerm)
+		{
+			Expression.vecTerm.push_back(Term1);
 		}
 	}
 
@@ -1101,11 +1917,21 @@ public:
 
 			if (!SolutionAchieved)
 			{
-				InReverse = TooManyTerms(3);
-
-				if (InReverse)
+				// Check if MaxComplexity reached
+				if (MaxComplexityReached(MaxComplexity) == true)
 				{
-					ChangeOperationsReverse(GetLastPerformedOperation());
+					// Restart Level
+					LoadEquationLevel(bbEquationLevel, true);
+					DisplayBouncingMessage("Starting Again");
+				}
+				else
+				{
+					InReverse = TooManyTerms(MaxTerms);
+
+					if (InReverse)
+					{
+						ChangeOperationsReverse(GetLastPerformedOperation());
+					}
 				}
 			}
 
@@ -1248,6 +2074,103 @@ public:
 		//}
 	}
 
+	bool DenominatorsEquivalent(Term Term1, Term Term2)
+	{
+		bool VariableMatch = false;
+		int nNumVar1 = 0;
+		int nNumVar2 = 0;
+
+		for (Variable Var1 : Term1.vecDenominator)
+			nNumVar1++;
+
+		for (Variable Var2 : Term2.vecDenominator)
+			nNumVar2++;
+
+		if (nNumVar1 != nNumVar2)
+			return false;
+
+		//Case of no denominator
+		if ((nNumVar1 == 0) and (nNumVar2 == 0))
+			return true;
+
+
+		for (Variable Var1 : Term1.vecDenominator)
+		{
+			VariableMatch = false;
+			for (Variable Var2 : Term2.vecDenominator)
+			{
+				if (Var1.Name == Var2.Name)
+					if (Var1.Power == Var2.Power)
+						VariableMatch = true;
+			}
+			if (VariableMatch == false)
+				return false;
+		}
+		
+		return true;
+	
+	}
+
+	bool DenominatorExists(Term Term1)
+	{
+		int VariablesInDenominator = 0;
+
+		Term1.vecDenominator.empty();
+
+		for (Variable v : Term1.vecDenominator)
+			VariablesInDenominator++;
+
+		if (VariablesInDenominator > 0)
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	//
+	//	Teaching functions
+	//
+	bool MaxComplexityReached(int MaxComplexity)
+	{
+		Complexity = 0;
+
+		for (Term bbTerm : bbEquation.LHS.vecTerm)
+		{
+			Complexity += abs(bbTerm.Coefficient);
+			for (Variable bbVariable : bbTerm.vecVariable)
+			{
+				Complexity += abs(bbVariable.Power);
+			}
+		}
+	
+		for (Term bbTerm : bbEquation.RHS.vecTerm)
+		{
+			Complexity += abs(bbTerm.Coefficient);
+			for (Variable bbVariable : bbTerm.vecVariable)
+			{
+				Complexity += abs(bbVariable.Power);
+			}
+		}
+		if (Complexity >= MaxComplexity)
+		{
+			return true;
+		}
+		else 
+		{
+			return false;
+		}
+	}
+
+	void DisplayBouncingMessage(std::string BouncingMessage)
+	{
+		//sSpaceObject soBouncingMessage;
+		float xOffset = (float)-1 * BouncingMessage.length() * 20;
+		vecBouncingMessages.push_back({ (float) ((ScreenWidth() / 2.0) + xOffset), -30, 0, 300, 0, 0, BouncingMessage });
+	}
+
 	bool TooManyTerms(int TermLimit)
 	{
 		int counter = 0;
@@ -1255,11 +2178,11 @@ public:
 		{
 			counter++;
 		}
-		if (counter == TermLimit)
-		{
-			return true;
-		}
-		counter = 0;
+		//if (counter == TermLimit)
+		//{
+		//	return true;
+		//}
+		//counter = 0;
 		for (Term Term1 : bbEquation.RHS.vecTerm)
 		{
 			counter++;
@@ -1279,6 +2202,494 @@ public:
 		return RequiredOp;
 	}
 
+	void PrepareEquationSide(SideOfEquation& EquationSide)
+	{
+		EquationSide.SideOfEquationStr = "";
+		// Right, we want to assemble things into denominators and numerators
+		std::string NumeratorStr = "";
+		std::string DenominatorStr = "";
+		bool CurrentTermHasDenominator = false;
+		bool DenominatorLoaded = false;
+		bool TermToSend = false;
+		Term LoadedDenominator;
+		Term NextDenominator;
+		Term LastTerm;
+		Term Numerator;
+		std::vector<Term> vecNumerators;
+		int NumberOfTimes = 0;
+
+		for (Term& bbTerm : EquationSide.vecTerm)
+		{
+			PrepareNumerator(bbTerm);
+			PrepareDenominator(bbTerm);
+			//We are starting here as this is the crucial part of the algorithm
+			if (DenominatorLoaded == false)
+			{
+				CurrentTermHasDenominator = !bbTerm.vecDenominator.empty();
+				if (CurrentTermHasDenominator == true)
+				{
+					// 'Load' denominator
+					LoadedDenominator.vecDenominator = bbTerm.vecDenominator;
+					//for (Variable bbVar : bbTerm.vecDenominator)
+					//{
+					//	std::string sPower;
+					//	sPower = std::to_string(bbVar.Power);
+					//	DenominatorStr += "[{" + sPower.erase(0, 1) + "}" + bbVar.Name + "]";
+					//}
+					DenominatorLoaded = true;
+					// 'Load' Numerator
+					Numerator.vecNumerator = bbTerm.vecNumerator;
+					Numerator.Coefficient = bbTerm.Coefficient;
+					vecNumerators.push_back(Numerator);
+					TermToSend = true;
+					//if (EquationSide.Name == "RHS")
+					//{
+						//ScreenOutputFlag3 = "Here with something to Send Cap'n";
+						//ScreenOutputFlag3 = "Denominator Str is " + DenominatorStr + " Cap'n";
+					//}
+				}
+				else
+				{
+					// Clear loaded denominator
+					LoadedDenominator.vecDenominator = bbTerm.vecDenominator;
+					// 'Load' Numerator
+					Numerator.vecNumerator = bbTerm.vecNumerator;
+					Numerator.Coefficient = bbTerm.Coefficient;
+					vecNumerators.push_back(Numerator);
+					// Paginate Numerator only term
+					ConstructTermStr(vecNumerators, LoadedDenominator, EquationSide);
+					TermToSend = false;
+					vecNumerators.clear();
+				}
+			}
+			else
+			{
+				// Denominator loaded
+				// Now check if current term has denominator
+				CurrentTermHasDenominator = !bbTerm.vecDenominator.empty();
+				if (CurrentTermHasDenominator == true)
+				{
+					// Compare current denominator and loaded denominator
+					// If they are the same concatenate numerators
+					NextDenominator.vecDenominator = bbTerm.vecDenominator;
+					if (DenominatorsEquivalent(LoadedDenominator, NextDenominator) == true)
+					{
+						// Concatenate Numerators 
+						Numerator.vecNumerator = bbTerm.vecNumerator;
+						Numerator.Coefficient = bbTerm.Coefficient;
+						vecNumerators.push_back(Numerator);
+						TermToSend = true;
+						//NumberOfTimes++;
+						//ScreenOutputFlag3 = "Got here Cap'n " + std::to_string(NumberOfTimes) + " times.";
+					}
+					else
+					{
+						// If they are different paginate last term and load new denominator
+						// and numerator
+						ConstructTermStr(vecNumerators, LoadedDenominator, EquationSide);
+						
+						//NumberOfTimes++;
+						//ScreenOutputFlag3 = "Got here Cap'n " + std::to_string(NumberOfTimes) + " times.";
+
+						// Clear from last term
+						DenominatorStr = "";
+						vecNumerators.clear();
+
+						// 'Load' denominator
+						LoadedDenominator.vecDenominator = bbTerm.vecDenominator;
+						//for (Variable bbVar : bbTerm.vecDenominator)
+						//{
+						//	std::string sPower;
+						//	sPower = std::to_string(bbVar.Power);
+						//	DenominatorStr += "[{" + sPower.erase(0, 1) + "}" + bbVar.Name + "]";
+						//}
+						DenominatorLoaded = true;
+
+						// 'Load' Numerator
+						Numerator.vecNumerator = bbTerm.vecNumerator;
+						Numerator.Coefficient = bbTerm.Coefficient;
+						vecNumerators.push_back(Numerator);
+
+						TermToSend = true;
+					}
+				}
+				else
+				{
+					// If a denominated is loaded and there is no current denominator  
+					// paginate last term  and load numerator only term.
+
+					DenominatorLoaded = false;
+					//This is sending both terms... it should only send the second
+					//if (TermToSend == true)
+					//{
+					ConstructTermStr(vecNumerators, LoadedDenominator, EquationSide);
+					//}
+					// Clear from last term
+					LoadedDenominator.vecDenominator = bbTerm.vecDenominator;
+					DenominatorStr = "";
+					vecNumerators.clear();
+
+					// ALERT: These compound terms will have multiple coefficients within them
+					// therefore that coefficient will need to be included in the TermStr
+
+					
+
+					Numerator.vecNumerator = bbTerm.vecNumerator;
+					Numerator.Coefficient = bbTerm.Coefficient;
+					vecNumerators.push_back(Numerator);
+
+					TermToSend = true;
+				}
+
+			}
+
+			//LastTerm = bbTerm;
+		}
+
+		// Taking care of last term which does not paginate in loop 
+		if (TermToSend == true)
+		{
+			ConstructTermStr(vecNumerators, LoadedDenominator, EquationSide);
+			//if (EquationSide.Name == "RHS")
+			//{
+			//	ScreenOutputFlag3 = "That should do it Cap'n";
+			//}
+		}
+		//Deal with first + or -
+		if (EquationSide.SideOfEquationStr[0] != '-')
+		{
+			EquationSide.SideOfEquationStr = EquationSide.SideOfEquationStr.erase(0, 1);
+		}
+
+		EquationSide.SideOfEquationStr = "[{1}" + EquationSide.SideOfEquationStr + "]";
+
+	}
+
+
+	//void ConstructTermStr(std::string Numerator, std::string Denominator, SideOfEquation& Side, Term bbTerm)
+	//void ConstructTermStr(std::vector<Term> vecNumerators, std::string DenominatorStr, SideOfEquation& Side)
+	void ConstructTermStr(std::vector<Term> vecNumerators, Term Denominator, SideOfEquation& Side)
+	{
+		std::string NumeratorStr = "";
+		std::string CurrentNumeratorStr = "";
+		bool FirstCoefficientNegative = false;
+		bool FirstNumerator = true;
+		int HeldCoefficient;
+		
+		std::string DenominatorStr = "";
+		int LenDenominator = 0;
+		int NumCompoundNumerators = 0;
+		int NumCharactersInCompoundNumerators = 0;
+		int TotalPadding = 0;
+		std::string LeftPadding = "";
+		std::string RightPadding = "";
+		
+		// So we want to pad by NumCharactersInCompound Numerator + 2 for every Compound Numerator > 1
+
+		// Then we want to pad by one more for every extra variable in the numerator
+		// Then we want to subtract the number of variables in the denominator
+		// Then we want to pad evenly on each side
+
+		// As our terms may now be compound we will want to build up a TermStr before we add directly to the SideStr
+		// We work up a NumeratorStr and a DenominatorStr and this will then be passed to a
+		// CombineNumeratorAndDenominator function or maybe CombineTermStr
+
+		// We shall have a vector vecNumerators, if the lead Numerator is negative the term becomes negative
+		// and all the coefficients are negated
+
+		//if (Numerator == "")
+		// Case where we have only a coefficient
+		// We want to cylce through vecNumerators...
+
+		// See if first coefficient is negative
+		if (vecNumerators[0].Coefficient < 0)
+		{
+			FirstCoefficientNegative = true;
+		}
+
+		//EquationBlaster::ScreenOutputFlag3 = "Here Cap'n";
+		//ScreenOutputFlag4 = "Cap'n";
+		for (Term Numerator : vecNumerators)
+		{
+			NumCompoundNumerators++;
+			//EquationBlaster::ScreenOutputFlag5 += " " + std::to_string(Numerator.Coefficient) + "Cap'n";
+		}
+
+		if(Side.Name == "LHS")
+			EquationBlaster::ScreenOutputFlag5 = " " + Side.Name + " " + std::to_string(NumCompoundNumerators);
+
+		for (Term Numerator : vecNumerators)
+		{
+			//CurrentNumeratorStr = "";
+			if (Numerator.vecNumerator.empty())
+			{
+				// Numerator has no variable, therefore only coefficient returned
+				if (abs(Numerator.Coefficient) < 10)
+				{
+					//if (abs(Numerator.Coefficient) != 1)
+					//{
+						NumCharactersInCompoundNumerators++; //This is to count the coefficient
+					//}
+				}
+				else
+				{
+					NumCharactersInCompoundNumerators++;
+					NumCharactersInCompoundNumerators++; //We will allow then to muck up the formatting with a coeff of 100+ 
+				}
+				if (FirstNumerator)
+				{
+					if (std::to_string(Numerator.Coefficient)[0] == '-')
+					{//Numerator = "[{1}1]";
+						//Minuses and pluses put outside of variable brackets
+						NumeratorStr += "[{1}" + std::to_string(Numerator.Coefficient).erase(0, 1) + "]";
+					}
+					else
+					{
+						NumeratorStr += "[{1}" + std::to_string(Numerator.Coefficient) + "]";
+					}
+				}
+				else
+				{
+					if (FirstCoefficientNegative)
+					{
+						HeldCoefficient = Numerator.Coefficient * -1;
+					}
+					else
+					{
+						HeldCoefficient = Numerator.Coefficient;
+					}
+					if (HeldCoefficient > 0)
+					{
+						NumeratorStr += "+[{1}[{1}" + std::to_string(HeldCoefficient) + "]]";
+					}
+					else
+					{
+						NumeratorStr += "-[{1}[{1}" + std::to_string(HeldCoefficient).erase(0, 1) + "]]";
+					}
+					
+				}
+			}
+			else
+			{
+				//Variable Numerator exists
+				CurrentNumeratorStr = "";
+				for (Variable bbVar : Numerator.vecNumerator)
+				{
+					CurrentNumeratorStr += "[{" + std::to_string(bbVar.Power) + "}" + bbVar.Name + "]";
+					NumCharactersInCompoundNumerators++; //All our variables are presently one letter
+					//Lets handle powers
+					if (bbVar.Power == 1)
+					{
+						//Do nothing
+					}
+					else
+					{
+						//The power should not be negative or it would not be in the Numerator.
+						if (abs(bbVar.Power) < 10)
+						{
+							NumCharactersInCompoundNumerators++;
+						}
+						else
+						{
+							NumCharactersInCompoundNumerators++;
+							NumCharactersInCompoundNumerators++;
+						}
+					}
+				}
+
+				if (FirstNumerator)
+				{
+					if (Numerator.Coefficient == 1)
+					{
+						NumeratorStr += "[{1}[{1}" + CurrentNumeratorStr + "]]";
+					}
+					else
+					{
+						if (Numerator.Coefficient == -1)
+						{
+							NumeratorStr += "[{1}[{1}" + CurrentNumeratorStr + "]]";
+							// Minus should be handled at end
+						}
+						else
+						{
+							//Handle character padding
+							if (abs(Numerator.Coefficient) < 10)
+							{
+								if (abs(Numerator.Coefficient) != 1)
+								{
+									NumCharactersInCompoundNumerators++; //This is to count the coefficient
+								}
+							}
+							else
+							{
+								NumCharactersInCompoundNumerators++;
+								NumCharactersInCompoundNumerators++; //We will allow then to muck up the formatting with a coeff of 100+ 
+							}
+
+							if (Numerator.Coefficient > 0)
+							{
+								NumeratorStr += "[{1}[{1}[{1}" + std::to_string(Numerator.Coefficient) + "]" + CurrentNumeratorStr + "]]";
+							}
+							else
+							{
+								NumeratorStr += "[{1}[{1}[{1}" + std::to_string(Numerator.Coefficient).erase(0,1) + "]" + CurrentNumeratorStr + "]]";
+								//Again minus should be handled at the end.
+							}
+						}
+					}
+				}
+				else
+				{
+					if (FirstCoefficientNegative)
+					{
+						HeldCoefficient = Numerator.Coefficient * -1;
+					}
+					else
+					{
+						HeldCoefficient = Numerator.Coefficient;
+					}
+					if (HeldCoefficient == 1)
+					{
+						NumeratorStr += "+[{1}" + CurrentNumeratorStr + "]";
+					}
+					else
+					{
+						if (HeldCoefficient == -1)
+						{
+							NumeratorStr += "-[{1}" + CurrentNumeratorStr + "]";
+						}
+						else
+						{
+							if (HeldCoefficient > 0)
+							{
+								NumeratorStr += "+[{1}[{1}[{1}" + std::to_string(HeldCoefficient) + "]" + CurrentNumeratorStr + "]]";
+							}
+							else
+							{
+								NumeratorStr += "-[{1}[{1}[{1}" + std::to_string(HeldCoefficient).erase(0, 1) + "]" + CurrentNumeratorStr + "]]";
+							}
+						}
+					}
+				}
+			}
+			FirstNumerator = false; // This should go false after the first loop
+		}
+
+		// Construct DenominatorStr
+		for (Variable bbVar : Denominator.vecDenominator)
+		{
+			LenDenominator++;
+			std::string sPower;
+			sPower = std::to_string(bbVar.Power);
+			if (abs(bbVar.Power) > 1)
+			{
+				LenDenominator++;
+			}
+			DenominatorStr += "[{" + sPower.erase(0, 1) + "}" + bbVar.Name + "]";
+		}
+
+		if (DenominatorStr == "")
+		{
+			if (!FirstCoefficientNegative)
+			{
+				Side.SideOfEquationStr += "+[{1}[{1}" + NumeratorStr + "]]";
+			}
+			else
+			{
+				Side.SideOfEquationStr += "-[{1}[{1}" + NumeratorStr + "]]";
+			}
+		}
+		else
+		{
+			// Handle padding
+			//for (char bbChar : DenominatorStr)
+			//{
+			//	LenDenominator++;
+			//}
+			if (NumCompoundNumerators == 1)
+			{
+				if (NumCharactersInCompoundNumerators > LenDenominator)
+				{
+					TotalPadding = NumCharactersInCompoundNumerators - LenDenominator;
+				}
+				else
+				{
+
+				}
+				if (Side.Name == "LHS")
+					EquationBlaster::ScreenOutputFlag4 = "What? " + std::to_string(NumCharactersInCompoundNumerators);
+			}
+				
+
+			if (NumCompoundNumerators == 2)
+			{
+				TotalPadding = NumCharactersInCompoundNumerators + 1 - LenDenominator;
+				if(Side.Name == "LHS")
+					EquationBlaster::ScreenOutputFlag4 = "What? " + std::to_string(NumCharactersInCompoundNumerators);
+			}
+
+			if (NumCompoundNumerators == 3)
+			{
+				TotalPadding = NumCharactersInCompoundNumerators + 4 - LenDenominator;
+				EquationBlaster::ScreenOutputFlag4 = "What? " + std::to_string(NumCharactersInCompoundNumerators);
+			}
+			//EquationBlaster::ScreenOutputFlag3 += " " + Side.Name + " " + std::to_string(NumCharactersInCompoundNumerators);
+			//EquationBlaster::ScreenOutputFlag3 += " " + Side.Name + " " + std::to_string(TotalPadding);
+
+			if (TotalPadding == 0)
+			{
+				// Do nothing
+			}
+			else
+			{
+				for (int i = 1; i <= TotalPadding; i++)
+				{
+					if (i % 2 == 1)
+					{
+						//pad left
+						LeftPadding += " ";
+					}
+					else
+					{
+						RightPadding += " ";
+					}
+				}
+			}
+
+			if (Side.Name == "LHS")
+			{
+				//EquationBlaster::ScreenOutputFlag3 = "Cap'n LP " + LeftPadding + " RP " + RightPadding;
+				//EquationBlaster::ScreenOutputFlag3 = DenominatorStr;
+			}
+
+			if (!FirstCoefficientNegative)
+			{
+				if (TotalPadding < 1)
+				{
+					Side.SideOfEquationStr += "+[{1}[{1}" + NumeratorStr + "][{-1}" + DenominatorStr + "]]";
+				}
+				else
+				{
+					Side.SideOfEquationStr += "+[{1}[{1}" + NumeratorStr + "][{-1}[{1}" + LeftPadding + "]" + DenominatorStr + "[{1}" + RightPadding + "]]]";
+				}
+			}
+			else
+			{
+				if (TotalPadding < 1)
+				{
+					Side.SideOfEquationStr += "-[{1}[{1}" + NumeratorStr + "][{-1}" + DenominatorStr + "]]";
+				}
+				else
+				{
+					Side.SideOfEquationStr += "-[{1}[{1}" + NumeratorStr + "][{-1}[{1}" + LeftPadding + "]" + DenominatorStr + "[{1}" + RightPadding + "]]]";
+				}
+				//Side.SideOfEquationStr += "-[{1}[{1}" + NumeratorStr + "][{-1}[{1}" + DenominatorStr + "]]]";
+				//EquationBlaster::ScreenOutputFlag3 = DenominatorStr;
+			}
+		}
+		//EquationBlaster::ScreenOutputFlag3 += " " + std::to_string(NumVariablesInCompoundNumerators);
+	}
+
 	void ResetGame()
 	{
 		if (!DoingLogarithms)
@@ -1296,7 +2707,7 @@ public:
 			bbEquationLevel = 1;
 
 			LoadAsteroidLevel(bbAsteroidLevel);
-			LoadEquationLevel(bbEquationLevel);
+			LoadEquationLevel(bbEquationLevel, false);
 
 			AvailableSpaceAnchors = 0;
 
@@ -1336,7 +2747,7 @@ public:
 	void ChangeOperationsReverse(std::string LastOpStr)
 	{
 
-		std::string RequiredOpStr;
+		//std::string RequiredOpStr;
 		std::vector<sSpaceObject> vecOperationsHold;
 
 		if (LastOpStr.substr(0,1) == "+")
@@ -1372,6 +2783,9 @@ public:
 		{
 			vecOperations.push_back(a);
 		}
+
+		// Our problem is the dropping function just takes variables and determines the operations
+		// randomly.
 	}
 
 	void BombWave(float BombAngle, float fElapsedTime)
@@ -1856,7 +3270,7 @@ public:
 				}
 				else
 				{
-					if (bbEquationLevel < 3)
+					if (bbEquationLevel < LoadedEquationLevels)
 					{
 						bbEquationLevel++;
 					}
@@ -1865,8 +3279,20 @@ public:
 						bbEquationLevel = 1;
 					}
 					//Between = false;
-					LoadEquationLevel(bbEquationLevel);
+					LoadEquationLevel(bbEquationLevel, false);
 				}
+			}
+
+
+			// Update and draw BouncingMessage
+			for (auto& a : vecBouncingMessages)
+			{
+				a.dy += -150 * fElapsedTime;
+				a.x += a.dx * fElapsedTime;
+				a.y += a.dy * fElapsedTime;
+				//a.angle += 0.5f * fElapsedTime;
+				//WrapCoordinates(a.x, a.y, a.x, a.y);
+				DrawString(a.x, a.y, a.OpStr, olc::WHITE, 5);
 			}
 
 			//Bomb Wave
@@ -2021,10 +3447,10 @@ public:
 					vecTicks.clear();
 					if (!DoingLogarithms)
 					{
-						if (bbEquationLevel < 3)
+						if (bbEquationLevel < LoadedEquationLevels)
 						{
 							bbEquationLevel++;
-							LoadEquationLevel(bbEquationLevel);
+							LoadEquationLevel(bbEquationLevel, false);
 						}
 						else
 						{
@@ -2049,7 +3475,7 @@ public:
 							bbLogarithmLevel = 1;
 							DoingLogarithms = false;
 							bbEquationLevel = 1;
-							LoadEquationLevel(bbEquationLevel);
+							LoadEquationLevel(bbEquationLevel, false);
 						}
 						BetweenEquationLevels = false;
 					}
@@ -2274,6 +3700,16 @@ public:
 					vecBombs.erase(i, vecBombs.end());
 			}
 
+			// Remove off screen bouncing messages
+			if (vecBouncingMessages.size() > 0)
+			{
+				auto i = remove_if(vecBouncingMessages.begin(), vecBouncingMessages.end(),
+					[&](sSpaceObject o) {return (o.y < (-50)); });
+				if (i != vecBouncingMessages.end())
+					vecBouncingMessages.erase(i, vecBouncingMessages.end());
+			}
+
+
 
 			//Handle running out of asteroids.
 			if (vecAsteroids.empty())
@@ -2318,6 +3754,8 @@ public:
 			//DrawString(5, 300, ScreenOutputFlag5, olc::WHITE, 5);
 			//DrawString(5, 350, ScreenOutputFlag6, olc::WHITE, 5);
 
+			//DrawString(5, 300, std::to_string(Complexity), olc::WHITE, 5);
+
 			//DrawString(5, 10, std::to_string(BetweenEquationLevels), olc::WHITE, 10);
 
 
@@ -2347,108 +3785,11 @@ public:
 					DrawString(5, 10, sLevelInstruction, olc::WHITE, 10);
 				}
 
-				// Lets aggregate some terms here - it will also happen in + - operation handling
-				// but for now.
+				EquationBlaster::ScreenOutputFlag3 = "Cap'n";
+				// Prepare LHS for Pagination
+				PrepareEquationSide(bbEquation.LHS);
 
-				//AggregateTerms(bbEquation.LHS); 
-				//AggregateTerms(bbEquation.RHS);
-
-				bbEquation.LHS.SideOfEquationStr = "";
-				for (auto& a : bbEquation.LHS.vecTerm)
-				{
-					// Right, we want to assemble things into denominators and numerators
-					std::string Numerator = "";
-					std::string Denominator = "";
-					for (auto& b : a.vecVariable)
-					{
-						//bbEquation.LHS.SideOfEquationStr = bbEquation.LHS.SideOfEquationStr + "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-						std::string sPower;
-						sPower = std::to_string(b.Power);
-						if (sPower[0] == '-')
-						{
-							// Right so here we are paginating the denominator
-							// What we want to do is create a denominator term which can be compared with others
-							Denominator += "[{" + sPower.erase(0, 1) + "}" + b.Name + "]";
-
-						}
-						else
-						{
-							Numerator += "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-							//bbEquation.LHS.SideOfEquationStr = bbEquation.LHS.SideOfEquationStr + "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-						}
-					}
-					if (Numerator == "")
-					{
-						if (std::to_string(a.Coefficient)[0] != '-')
-						{//Numerator = "[{1}1]";
-							Numerator = "[{1}" + std::to_string(a.Coefficient) + "]";
-						}
-						else
-						{
-							Numerator = "[{1}" + std::to_string(a.Coefficient).erase(0,1) + "]";
-						}
-					}
-					else
-					{
-						if (a.Coefficient != 1)
-						{
-							if (std::to_string(a.Coefficient)[0] != '-')
-							{
-								Numerator = "[{1}" + std::to_string(a.Coefficient) + "]" + Numerator;
-							}
-							else
-							{
-								if (a.Coefficient != -1)
-								{
-									Numerator = "[{1}" + std::to_string(a.Coefficient).erase(0, 1) + "]" + Numerator;
-								}
-							}
-						}
-					}
-					if (Denominator == "")
-					{
-						if (std::to_string(a.Coefficient)[0] != '-')
-						{
-							bbEquation.LHS.SideOfEquationStr += "+[{1}[{1}" + Numerator + "]]";
-						}
-						else
-						{
-							bbEquation.LHS.SideOfEquationStr += "-[{1}[{1}" + Numerator + "]]";
-						}
-					}
-					else
-					{
-						if (std::to_string(a.Coefficient)[0] != '-')
-						{
-							bbEquation.LHS.SideOfEquationStr += "+[{1}[{1}" + Numerator + "][{-1}[{1}" + Denominator + "]]]";
-						}
-						else
-						{
-							bbEquation.LHS.SideOfEquationStr += "-[{1}[{1}" + Numerator + "][{-1}[{1}" + Denominator + "]]]";
-						}
-					}
-				}
-
-				//Deal with first + or -
-				if (bbEquation.LHS.SideOfEquationStr[0] != '-')
-				{
-					bbEquation.LHS.SideOfEquationStr = bbEquation.LHS.SideOfEquationStr.erase(0, 1);
-				}
-				
-				bbEquation.LHS.SideOfEquationStr = "[{1}" + bbEquation.LHS.SideOfEquationStr + "]";
-
-				//if (bbEquation.LHS.SideOfEquationStr == "")
-				//	bbEquation.LHS.SideOfEquationStr = "[{1}1]";
-
-				//bbEquation.LHS.SideOfEquationStr = "[{1}" + bbEquation.LHS.SideOfEquationStr + "]";
-
-				//bbStrLen = 0;
-
-				//for (char a : bbEquation.LHS.SideOfEquationStr)
-				//	bbStrLen++;
-
-
-				//PAGINATE BABY!
+				// PAGINATE BABY!
 
 				PaginatorLHS.Reset();
 
@@ -2481,139 +3822,15 @@ public:
 				}
 
 
-				//We have the issue of the scaling, we probably need to concrete a certain scale - this one
-
-				//DrawString((ScreenWidth() / 2.0f) - ((bbStrLen * 24) + 24), 5 * ScreenHeight() / 6, bbEquation.LHS.SideOfEquationStr + std::to_string(bbStrLen), olc::WHITE, 3);
-				//DrawString((ScreenWidth() / 2.0f) - ((bbStrLen * 24) + 24), 5 * ScreenHeight() / 6, bbEquation.LHS.SideOfEquationStr, olc::WHITE, 3);
-
+				// Draw Equals sign... kinda the point...
+				
 				DrawString((ScreenWidth() / 2) - 12, 5 * ScreenHeight() / 6, "=", olc::WHITE, 3);
 
-				//if (bbEquation.RHS.SideOfEquationStr == "")
-				//	bbEquation.RHS.SideOfEquationStr = "[{1}1]";
-
-				bbStrLen = 0;
-
-				for (char a : bbEquation.RHS.SideOfEquationStr)
-					bbStrLen++;
-
-				bbEquation.RHS.SideOfEquationStr = "";
-				for (auto& a : bbEquation.RHS.vecTerm)
-				{
-					// Right, we want to assemble things into denominators and numerators
-					std::string Numerator = "";
-					std::string Denominator = "";
-					for (auto& b : a.vecVariable)
-					{
-						//bbEquation.LHS.SideOfEquationStr = bbEquation.LHS.SideOfEquationStr + "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-						std::string sPower;
-						sPower = std::to_string(b.Power);
-						if (sPower[0] == '-')
-						{
-							Denominator += "[{" + sPower.erase(0, 1) + "}" + b.Name + "]";
-
-						}
-						else
-						{
-							Numerator += "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-							//bbEquation.LHS.SideOfEquationStr = bbEquation.LHS.SideOfEquationStr + "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-						}
-					}
-					if (Numerator == "")
-					{
-						if (std::to_string(a.Coefficient)[0] != '-')
-						{//Numerator = "[{1}1]";
-							Numerator = "[{1}" + std::to_string(a.Coefficient) + "]";
-						}
-						else
-						{
-							Numerator = "[{1}" + std::to_string(a.Coefficient).erase(0, 1) + "]";
-						}
-					}
-					else
-					{
-						if (a.Coefficient != 1)
-						{
-							if (std::to_string(a.Coefficient)[0] != '-')
-							{
-								Numerator = "[{1}" + std::to_string(a.Coefficient) + "]" + Numerator;
-							}
-							else
-							{
-								if (a.Coefficient != -1)
-								{
-									Numerator = "[{1}" + std::to_string(a.Coefficient).erase(0, 1) + "]" + Numerator;
-								}
-							}
-						}
-					}
-					if (Denominator == "")
-						if (std::to_string(a.Coefficient)[0] != '-')
-						{
-							bbEquation.RHS.SideOfEquationStr += "+[{1}[{1}" + Numerator + "]]";
-						}
-						else
-						{
-							bbEquation.RHS.SideOfEquationStr += "-[{1}[{1}" + Numerator + "]]";
-						}
-					else
-					{
-						if (std::to_string(a.Coefficient)[0] != '-')
-						{
-							bbEquation.RHS.SideOfEquationStr += "+[{1}[{1}" + Numerator + "][{-1}[{1}" + Denominator + "]]]";
-						}
-						else
-						{
-							bbEquation.RHS.SideOfEquationStr += "-[{1}[{1}" + Numerator + "][{-1}[{1}" + Denominator + "]]]";
-						}
-					}
-				}
 			
-				//Deal with first +
-				if (bbEquation.RHS.SideOfEquationStr[0] != '-')
-				{
-					bbEquation.RHS.SideOfEquationStr = bbEquation.RHS.SideOfEquationStr.erase(0, 1);
-				}
 
-				bbEquation.RHS.SideOfEquationStr = "[{1}" + bbEquation.RHS.SideOfEquationStr + "]";
+				// Prepare RHS for Pagination
 
-			
-					//for (auto& b : a.vecVariable)
-					//{
-					//	std::string sPower;
-					//	sPower = std::to_string(b.Power);
-					//	if (sPower[0] == '-')
-					//	{
-					//		if (sPower[1] == '1')
-					//		{
-					//			bbEquation.RHS.SideOfEquationStr = bbEquation.RHS.SideOfEquationStr + "[{" + sPower + "}" + b.Name + "]";
-					//		}
-					//		else
-					//		{
-					//			bbEquation.RHS.SideOfEquationStr = bbEquation.RHS.SideOfEquationStr + "[{-1}[{" + sPower.erase(0,1) + "}" + b.Name + "]]";
-					//		}
-
-					//	}
-					//	else
-					//	{
-					//		bbEquation.RHS.SideOfEquationStr = bbEquation.RHS.SideOfEquationStr + "[{" + std::to_string(b.Power) + "}" + b.Name + "]";
-					//	}
-					//}
-				//bbEquation.RHS.SideOfEquationStr = "[{1}" + bbEquation.RHS.SideOfEquationStr + "-[{1}Maybe Cap'n]]";
-				//bbEquation.RHS.SideOfEquationStr = "[{1}" + bbEquation.RHS.SideOfEquationStr + "]";
-				// Doing this covers the case where the RHS is empty.
-
-
-				//bbEquation.RHS.SideOfEquationStr = "[{1}" "[{1}[{1}[{1}F]][{-1}[{1}[{2}A][{1}P]]]]" "-[{1}Maybe Cap'n]]";
-
-				// Right so this shows us we want to work out the denominator for each term Denom = [{-1}[{1}[{} ][{} ]...]]
-				// And the numerator [{}[{} ][{} ]...] which is set to [{1}1] if empty.
-				// The combine this is a final bracket.
-
-				//DrawString((ScreenWidth() / 2.0f) + 24, 5 * ScreenHeight() / 6, bbEquation.RHS.SideOfEquationStr + std::to_string(bbStrLen), olc::WHITE, 3);
-				//DrawString((ScreenWidth() / 2.0f) + 24, 5 * ScreenHeight() / 6, bbEquation.RHS.SideOfEquationStr, olc::WHITE, 3);
-				
-				RHSxOffset = 24;
-				RHSyOffset = 2 * ScreenHeight() / 6;
+				PrepareEquationSide(bbEquation.RHS);
 
 				//PAGINATE BABY!
 
@@ -2627,6 +3844,9 @@ public:
 				{
 					PaginatorRHS.vecPaginatedText.push_back(PaginatedText);
 				}
+
+				RHSxOffset = 24;
+				RHSyOffset = 2 * ScreenHeight() / 6;
 
 				for (sSpaceText& sText : PaginatorRHS.vecPaginatedText)
 				{
