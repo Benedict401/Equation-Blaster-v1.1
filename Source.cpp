@@ -123,7 +123,7 @@ private:
 	Logarithm TriangleLogarithm;
 	int bbAsteroidLevel = 1;
 	int bbEquationLevel = 1;
-	int LoadedEquationLevels = 6;
+	int LoadedEquationLevels = 8;
 	int bbLogarithmLevel = 1;
 	int MaxTerms = 3;
 	int MaxComplexity = 100;
@@ -399,7 +399,7 @@ public:
 		switch (CurrentEquationLevel)
 		{
 
-		case 1:
+		case 1: // a = b + c
 			MaxTerms = 6;
 			if (!Reload)
 			{
@@ -444,7 +444,107 @@ public:
 			vecAppropriateVariables.push_back("+" + vecChosenVariables[2]);
 
 			break;
-		case 2:
+		case 2: // e = f - g
+			MaxTerms = 6;
+			if (!Reload)
+			{
+				ChooseVariables(3);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[1];
+			sCongratulations = vecChosenVariables[1] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = -1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Variables
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[2]);
+
+			break;
+		case 5: // W = o + A + L
+			MaxTerms = 6;
+			if (!Reload)
+			{
+				ChooseVariables(4);
+			}
+
+			sLevelInstruction = "Find " + vecChosenVariables[1];
+			sCongratulations = vecChosenVariables[1] + " found!";
+
+			// bbEquation
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = 1;
+			bbEquation.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// bbEquationSolution
+			Term1.vecVariable.push_back({ vecChosenVariables[0], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[2], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+			Term1.vecVariable.push_back({ vecChosenVariables[3], 1 });
+			Term1.Coefficient = -1;
+			bbEquationSolution.LHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			Term1.vecVariable.push_back({ vecChosenVariables[1], 1 });
+			Term1.Coefficient = 1;
+			bbEquationSolution.RHS.vecTerm.push_back(Term1);
+			Term1.vecVariable.clear();
+
+			// Appropriate Operations
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[2]);
+			vecAppropriateVariables.push_back("-" + vecChosenVariables[3]);
+			vecAppropriateVariables.push_back("+" + vecChosenVariables[3]);
+
+			break;
+		case 6: // H = f - g + D
 			MaxTerms = 6;
 			if (!Reload)
 			{
@@ -499,7 +599,7 @@ public:
 			vecAppropriateVariables.push_back("-" + vecChosenVariables[2]);
 
 			break;
-		case 3:
+		case 3: // h = G/k
 			MaxTerms = 4;
 			if (!Reload)
 			{
@@ -539,7 +639,7 @@ public:
 
 			break;
 
-		case 4:
+		case 4: // m = pq
 			MaxTerms = 4;
 			if (!Reload)
 			{
@@ -579,7 +679,7 @@ public:
 
 			break;
 
-		case 5:
+		case 8:
 			MaxTerms = 6;
 			if (!Reload)
 			{
@@ -629,7 +729,7 @@ public:
 			vecAppropriateVariables.push_back("%" + vecChosenVariables[2]);
 
 			break;
-		case 6:
+		case 7:
 			MaxTerms = 6;
 			if (!Reload)
 				ChooseVariables(5);
@@ -3783,6 +3883,7 @@ public:
 				else
 				{
 					DrawString(5, 10, sLevelInstruction, olc::WHITE, 10);
+					DrawString(3, 100, "Level " + std::to_string(bbEquationLevel), olc::WHITE, 5);
 				}
 
 				EquationBlaster::ScreenOutputFlag3 = "Cap'n";
